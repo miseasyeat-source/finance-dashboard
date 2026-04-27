@@ -232,6 +232,37 @@
 </div>
 
 <script>
+  // ─── CONFIG ──────────────────────────────────────────────────────────────────
+  // Set your API base URL here. All endpoints will be prefixed with this.
+  // Example: var API_BASE = 'https://your-backend.com/api';
+  var API_BASE = '/api';
+
+  // ─── API HELPER ──────────────────────────────────────────────────────────────
+  // Wraps fetch() to mirror the google.script.run pattern:
+  //   api(method, path, body)
+  //     .then(onSuccess)
+  //     .catch(onFailure)
+  // GET  → fetch(API_BASE + path)
+  // POST → fetch(API_BASE + path, { method:'POST', body: JSON.stringify(body) })
+  // Every endpoint is expected to return JSON. On HTTP error the promise rejects
+  // with an Error whose .message matches what google.script.run would have given.
+  function api(method, path, body) {
+    var opts = {
+      method: method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    return fetch(API_BASE + path, opts).then(function(res) {
+      if (!res.ok) {
+        return res.json().catch(function() { return {}; }).then(function(errData) {
+          throw new Error(errData.error || ('HTTP ' + res.status));
+        });
+      }
+      return res.json();
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   var _data=null,_accountant=null,_currentTab='today',_coFilter='all',_paidPeriod='all';
   var _MK_SHEET='Purchase-MK',_RK_SHEET='Purchase-RK',_MK_NAME='MK',_RK_NAME='RK';
   var DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -382,15 +413,38 @@
   function firmPill(firm){if(!firm)return '';var cls=(firm===_RK_NAME)?'firm-rk':'firm-mk';return '<span class="firm-pill '+cls+'">'+firm+'</span>';}
   function sourcePill(source){return source==='other'?'<span class="source-pill pill-other">Other</span>':'<span class="source-pill pill-purchase">Purchase</span>';}
 
-  function serverMarkPaid(source,rowNum,sheetName,onSuccess,onFail){
-    if(source==='other')google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).markOtherPaid(rowNum);
-    else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).markPayablePaid(rowNum,sheetName||_MK_SHEET);
+  // ─── SERVER ACTION HELPERS ────────────────────────────────────────────────────
+  // Replaces all google.script.run.withSuccessHandler().withFailureHandler() chains.
+  // Each function returns the fetch() Promise directly; callers use .then/.catch.
+
+  function serverMarkPaid(source, rowNum, sheetName, onSuccess, onFail) {
+    var path, body;
+    if (source === 'other') {
+      // was: google.script.run.markOtherPaid(rowNum)
+      path = '/other/mark-paid';
+      body = { rowNum: rowNum };
+    } else {
+      // was: google.script.run.markPayablePaid(rowNum, sheetName)
+      path = '/payable/mark-paid';
+      body = { rowNum: rowNum, sheetName: sheetName || _MK_SHEET };
+    }
+    api('POST', path, body).then(onSuccess).catch(onFail);
   }
 
-  function serverUndoPaid(source,rowNum,sheetName,onSuccess,onFail){
-    if(source==='other')google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).undoOtherPaid(rowNum);
-    else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).undoPayablePaid(rowNum,sheetName||_MK_SHEET);
+  function serverUndoPaid(source, rowNum, sheetName, onSuccess, onFail) {
+    var path, body;
+    if (source === 'other') {
+      // was: google.script.run.undoOtherPaid(rowNum)
+      path = '/other/undo-paid';
+      body = { rowNum: rowNum };
+    } else {
+      // was: google.script.run.undoPayablePaid(rowNum, sheetName)
+      path = '/payable/undo-paid';
+      body = { rowNum: rowNum, sheetName: sheetName || _MK_SHEET };
+    }
+    api('POST', path, body).then(onSuccess).catch(onFail);
   }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   function updateLocalStatus(rowNum,source,sheetName,status){
     [_data.todayPay||[],_data.weekPay||[],_data.overduePay||[]].forEach(function(arr){
@@ -489,41 +543,44 @@
     if(!confirm('Mark ALL '+items.length+' pending payable(s) as PAID?'))return;
     btn.disabled=true;btn.textContent='⏳ Saving…';
 
-    google.script.run.withSuccessHandler(function(res){
-      if(res.success){
-        showToast('✅ All payables marked PAID');
+    // was: google.script.run.markPayablesPaidBulk(items)
+    api('POST', '/payable/mark-paid-bulk', { items: items })
+      .then(function(res){
+        if(res.success){
+          showToast('✅ All payables marked PAID');
 
-        items.forEach(function(it){
-          updateLocalStatus(it.rowNum,it.source,it.sheetName,'PAID');
-          var rowData=findLocalRow(it.rowNum,it.source,it.sheetName);
-          addPaymentEntryToLocalHistory(it.source,it.rowNum,it.sheetName,'',rowData?Number(rowData.amount||0):0,'full');
-        });
+          items.forEach(function(it){
+            updateLocalStatus(it.rowNum,it.source,it.sheetName,'PAID');
+            var rowData=findLocalRow(it.rowNum,it.source,it.sheetName);
+            addPaymentEntryToLocalHistory(it.source,it.rowNum,it.sheetName,'',rowData?Number(rowData.amount||0):0,'full');
+          });
 
-        rowIds.forEach(function(id){
-          var row=document.getElementById(id);
-          if(row){
-            row.classList.remove('red-row','orange-row');
-            row.classList.add('green-row');
-            var cb=row.querySelector('.tick-cb');
-            if(cb){cb.checked=true;cb.disabled=true;}
-            var amt=row.querySelector('.tick-amt');
-            if(amt)amt.classList.add('paid');
-            var pb=row.querySelector('.tick-part');
-            if(pb)pb.remove();
-            movePaidRowUp(id);
-          }
-        });
+          rowIds.forEach(function(id){
+            var row=document.getElementById(id);
+            if(row){
+              row.classList.remove('red-row','orange-row');
+              row.classList.add('green-row');
+              var cb=row.querySelector('.tick-cb');
+              if(cb){cb.checked=true;cb.disabled=true;}
+              var amt=row.querySelector('.tick-amt');
+              if(amt)amt.classList.add('paid');
+              var pb=row.querySelector('.tick-part');
+              if(pb)pb.remove();
+              movePaidRowUp(id);
+            }
+          });
 
-        btn.closest('.pay-all-bar').style.display='none';
-        refreshLiveSummaries();
-      }else{
-        showToast('❌ '+(res.error||'Error'));
+          btn.closest('.pay-all-bar').style.display='none';
+          refreshLiveSummaries();
+        }else{
+          showToast('❌ '+(res.error||'Error'));
+          btn.disabled=false;btn.textContent='💳 Pay All Today';
+        }
+      })
+      .catch(function(err){
+        showToast('❌ '+err.message);
         btn.disabled=false;btn.textContent='💳 Pay All Today';
-      }
-    }).withFailureHandler(function(err){
-      showToast('❌ '+err.message);
-      btn.disabled=false;btn.textContent='💳 Pay All Today';
-    }).markPayablesPaidBulk(items);
+      });
   }
 
   function bindTodayPayAll(){
@@ -683,7 +740,15 @@
     if(amt>=_partAmount){showToast('❌ Use checkbox for full payment');return;}
 
     var btn=document.getElementById('partModalConfirm');btn.disabled=true;btn.textContent='⏳ Saving…';
-    google.script.run.withSuccessHandler(function(res){
+
+    // was: google.script.run.recordPartPaymentPayable(_partRowNum, _partSource, amt, _partSheetName)
+    api('POST', '/payable/part-payment', {
+      rowNum:    _partRowNum,
+      source:    _partSource,
+      amount:    amt,
+      sheetName: _partSheetName
+    })
+    .then(function(res){
       if(res.success){
         closePartModal();showToast('💸 '+fmt(amt)+' payment recorded');
         var amtEl=document.getElementById('pamt-'+_partRowId);
@@ -704,9 +769,10 @@
       }else{
         showToast('❌ '+res.error);btn.disabled=false;btn.textContent='✅ Confirm';
       }
-    }).withFailureHandler(function(err){
+    })
+    .catch(function(err){
       showToast('❌ '+err.message);btn.disabled=false;btn.textContent='✅ Confirm';
-    }).recordPartPaymentPayable(_partRowNum,_partSource,amt,_partSheetName);
+    });
   }
 
   document.getElementById('partModal').addEventListener('click',function(e){if(e.target===this)closePartModal();});
@@ -750,19 +816,25 @@
 
       updatePaidKPIs();
       render();
-    }  
+    }
 
-    google.script.run.withSuccessHandler(function(data){
-      _data=data;doneMain=true;tryRender();
-    }).withFailureHandler(function(err){
-      document.getElementById('content').innerHTML='<div class="error-box">❌ '+err.message+'</div>';
-    }).getDashboardData();
+    // was: google.script.run.withSuccessHandler(...).withFailureHandler(...).getDashboardData()
+    api('GET', '/dashboard')
+      .then(function(data){
+        _data=data;doneMain=true;tryRender();
+      })
+      .catch(function(err){
+        document.getElementById('content').innerHTML='<div class="error-box">❌ '+err.message+'</div>';
+      });
 
-    google.script.run.withSuccessHandler(function(data){
-      _accountant=data||{allPayments:[]};doneAcc=true;tryRender();
-    }).withFailureHandler(function(){
-      _accountant={allPayments:[]};doneAcc=true;tryRender();
-    }).getAccountantData();
+    // was: google.script.run.withSuccessHandler(...).withFailureHandler(...).getAccountantData()
+    api('GET', '/accountant')
+      .then(function(data){
+        _accountant=data||{allPayments:[]};doneAcc=true;tryRender();
+      })
+      .catch(function(){
+        _accountant={allPayments:[]};doneAcc=true;tryRender();
+      });
   }
 
   window.onload=loadDashboard;
