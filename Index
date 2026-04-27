@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    :root {
+      --ink:#0f172a; --success:#16a34a; --danger:#dc2626; --warning:#d97706;
+      --info:#2563eb; --purple:#7c3aed; --orange:#ea580c; --teal:#0d9488;
+      --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0; --muted:#64748b;
+    }
+    *{box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);margin:0;padding:12px;color:var(--ink);}
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+    .kpi{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:4px solid #cbd5e1;}
+    .kpi.recv{border-color:var(--success);}
+    .kpi.pay{border-color:var(--info);}
+    .kpi.over{border-color:var(--danger);}
+    .kpi.week{border-color:var(--warning);}
+    .kpi.bank{border-color:var(--purple);}
+    .kpi.other{border-color:var(--orange);}
+    .kpi.mk{border-color:#0891b2;}
+    .kpi.rk{border-color:#7c3aed;}
+    .kpi.paid{border-color:var(--teal);}
+    .kpi h5{margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;}
+    .kpi h3{margin:0;font-size:1.05rem;font-weight:900;}
+    .kpi h3.green{color:var(--success);}
+    .kpi h3.red{color:var(--danger);}
+    .kpi h3.blue{color:var(--info);}
+    .kpi h3.amber{color:var(--warning);}
+    .kpi h3.purple{color:var(--purple);}
+    .kpi h3.orange{color:var(--orange);}
+    .kpi h3.cyan{color:#0891b2;}
+    .kpi h3.violet{color:#7c3aed;}
+    .kpi h3.teal{color:var(--teal);}
+    .kpi-updated{margin:4px 0 0;font-size:11px;color:var(--muted);font-weight:600;}
+    .kpi-sub{margin:3px 0 0;font-size:11px;color:var(--muted);font-weight:600;}
+
+    .paid-section-label{display:flex;align-items:center;gap:8px;background:var(--teal);color:white;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:800;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+    .paid-period-tabs{display:flex;gap:6px;margin-bottom:10px;}
+    .paid-tab{flex:1;text-align:center;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);background:var(--card);border:none;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:all .2s;}
+    .paid-tab.active{background:var(--teal);color:#fff;}
+
+    .co-filter{display:flex;gap:8px;margin-bottom:14px;}
+    .co-btn{flex:1;text-align:center;padding:10px 4px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);background:var(--card);border:none;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:all .2s;}
+    .co-btn.active{background:var(--ink);color:#fff;}
+
+    .tabs{display:flex;background:var(--card);border-radius:12px;padding:4px;margin-bottom:14px;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+    .tab{flex:1;text-align:center;padding:10px 4px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s;user-select:none;white-space:nowrap;}
+    .tab.active{background:var(--ink);color:#fff;}
+
+    .section-header{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;}
+    .section-title{font-size:13px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.5px;}
+    .count-badge{font-size:11px;background:#e2e8f0;color:var(--muted);border-radius:20px;padding:2px 10px;font-weight:700;}
+
+    .pay-all-bar{display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;margin-bottom:12px;gap:8px;}
+    .pay-all-bar span{font-size:12px;font-weight:700;color:var(--danger);}
+    .btn-pay-all-today{background:var(--danger);border:none;color:white;font-weight:800;font-size:12px;padding:8px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+    .btn-pay-all-today:disabled{opacity:.5;cursor:not-allowed;}
+
+    .row-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;border-left:5px solid #cbd5e1;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:opacity .4s,transform .4s;}
+    .green-row{border-left-color:var(--success);}
+    .red-row{border-left-color:var(--danger);}
+    .orange-row{border-left-color:var(--orange);}
+    .row-card.paid-out{opacity:0;transform:translateX(40px);pointer-events:none;}
+
+    .source-pill{font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;}
+    .pill-purchase{background:#dbeafe;color:#1d4ed8;}
+    .pill-other{background:#ffedd5;color:#c2410c;}
+    .firm-pill{font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:4px;text-transform:uppercase;letter-spacing:.4px;}
+    .firm-mk{background:#cffafe;color:#0e7490;}
+    .firm-rk{background:#ede9fe;color:#5b21b6;}
+
+    .row-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+    .row-company{font-weight:800;font-size:.95rem;flex:1;margin-right:8px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+    .status-badge{padding:3px 9px;border-radius:6px;color:white;font-size:10px;font-weight:800;white-space:nowrap;}
+    .bg-paid{background:var(--success);}
+    .bg-pending{background:var(--warning);}
+    .data-line{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;}
+    .lbl{color:var(--muted);font-size:11px;font-weight:600;}
+    .val{font-weight:700;}
+    .val.danger{color:var(--danger);}
+    .val.green{color:var(--success);}
+    .divider{border:0;border-top:1px solid var(--border);margin:8px 0;}
+
+    .day-tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px;}
+    .overdue{color:var(--danger);background:#fee2e2;}
+    .duetoday{color:var(--warning);background:#fef3c7;}
+    .ontime{color:#64748b;background:#f1f5f9;}
+
+    .tick-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card);border-radius:10px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid #cbd5e1;transition:opacity .4s,transform .4s,background .3s;}
+    .tick-row.red-row{border-left-color:var(--danger);}
+    .tick-row.green-row{border-left-color:var(--success);opacity:.9;background:#f0fdf4;}
+    .tick-row.orange-row{border-left-color:var(--orange);}
+    .tick-row.paid-out{opacity:0;transform:translateX(40px);pointer-events:none;}
+
+    .tick-cb{width:20px;height:20px;accent-color:var(--success);cursor:pointer;flex-shrink:0;}
+    .tick-cb:disabled{cursor:not-allowed;opacity:.5;}
+    .tick-info{flex:1;min-width:0;}
+    .tick-name{font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;}
+    .tick-meta{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;}
+    .tick-amt{font-weight:900;font-size:13px;color:var(--danger);white-space:nowrap;flex-shrink:0;}
+    .tick-amt.paid{color:var(--success);}
+    .tick-undo{background:none;border:none;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;}
+    .tick-part{background:var(--orange);border:none;color:white;font-size:13px;font-weight:800;padding:4px 8px;border-radius:7px;cursor:pointer;flex-shrink:0;}
+
+    .actions{display:flex;gap:8px;margin-top:10px;}
+    .btn{flex:1;text-align:center;padding:10px;border-radius:8px;color:white;font-weight:800;font-size:12px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;border:none;}
+    .btn-call{background:var(--info);}
+    .btn-wa{background:var(--success);}
+
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .modal-box{background:var(--card);border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+    .modal-box h4{margin:0 0 4px;font-size:15px;font-weight:900;color:var(--ink);}
+    .modal-box p{margin:0 0 14px;font-size:12px;color:var(--muted);font-weight:600;}
+    .modal-input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:16px;font-weight:700;color:var(--ink);outline:none;margin-bottom:12px;}
+    .modal-input:focus{border-color:var(--orange);}
+    .modal-pending{font-size:12px;font-weight:700;color:var(--danger);margin-bottom:14px;}
+    .modal-btns{display:flex;gap:8px;}
+    .modal-btns button{flex:1;padding:11px;border:none;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;}
+    .modal-confirm{background:var(--orange);color:white;}
+    .modal-cancel{background:#e2e8f0;color:var(--ink);}
+    .modal-confirm:disabled{opacity:.5;cursor:not-allowed;}
+
+    .empty{text-align:center;padding:30px 20px;color:var(--muted);font-size:14px;}
+    .error-box{background:#fee2e2;color:var(--danger);border-radius:10px;padding:14px;font-size:13px;font-weight:600;margin-bottom:12px;}
+    .refresh-btn{display:block;width:100%;padding:12px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:14px;}
+
+    .pending-section .tick-row{background:#fff8f8;}
+    .pending-total-bar{display:flex;justify-content:space-between;align-items:center;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;margin-bottom:10px;}
+    .pending-total-bar span{font-size:12px;font-weight:700;color:var(--danger);}
+    .pending-total-bar strong{font-size:14px;font-weight:900;color:var(--danger);}
+
+    .day-block{margin-bottom:18px;}
+    .day-label{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:7px 12px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+    .today-label{background:var(--ink);color:white;}
+    .normal-label{background:#e2e8f0;color:var(--ink);}
+    .btn-pay-all{background:var(--danger);border-radius:7px;padding:6px 13px;color:white;font-weight:800;font-size:11px;border:none;cursor:pointer;white-space:nowrap;}
+    .btn-pay-all:disabled{opacity:.5;cursor:not-allowed;}
+
+    .mini-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:4px;}
+    .mini-table thead tr{background:#f8fafc;}
+    .mini-table th{padding:8px 10px;font-size:10px;font-weight:800;color:var(--muted);text-align:left;text-transform:uppercase;border-bottom:1px solid var(--border);}
+    .mini-table td{padding:9px 10px;font-size:12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;transition:opacity .4s;}
+    .mini-table tr:last-child td{border-bottom:none;}
+    .mini-table tr.overdue-row td{background:#fff5f5;}
+    .mini-table tr.row-paid-out td{opacity:0;pointer-events:none;}
+    .mini-table .company-cell{font-weight:700;}
+    .mini-table .amt-cell{font-weight:800;text-align:right;white-space:nowrap;}
+    .mini-table .amt-cell.recv{color:var(--success);}
+    .mini-table .amt-cell.pay{color:var(--info);}
+    .mini-table .amt-cell.overdue{color:var(--danger);}
+    .type-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;}
+    .dot-recv{background:var(--success);}
+    .dot-pay{background:var(--info);}
+    .dot-other{background:var(--orange);}
+    .dot-mk{background:#0891b2;}
+    .dot-rk{background:#7c3aed;}
+
+    .day-summary{display:flex;gap:8px;margin-bottom:8px;}
+    .day-sum-pill{flex:1;background:var(--card);border-radius:8px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+    .day-sum-pill h6{margin:0 0 2px;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;}
+    .day-sum-pill p{margin:0;font-size:13px;font-weight:900;}
+    .day-sum-pill p.green{color:var(--success);}
+    .day-sum-pill p.blue{color:var(--info);}
+
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap;}
+    #toast.show{opacity:1;}
+  </style>
+</head>
+<body>
+
+<div class="kpi-grid">
+  <div class="kpi recv"><h5>📥 Today's Expected Receiving</h5><h3 class="green" id="kpiTodayRecv">₹ —</h3></div>
+  <div class="kpi pay"><h5>📤 Today's Payment Due</h5><h3 class="blue" id="kpiTodayPay">₹ —</h3></div>
+  <div class="kpi over" style="grid-column:1/-1"><h5>🔴 Overdue Receivables &nbsp;|&nbsp; 🔴 Overdue Payables</h5><h3 class="red" id="kpiOverAll">₹ — | ₹ —</h3></div>
+  <div class="kpi week" style="grid-column:1/-1"><h5>📅 This Week — Receivable | Payable</h5><h3 class="amber" id="kpiWeek">₹ — | ₹ —</h3></div>
+  <div class="kpi mk"><h5>🏭 <span class="lbl-mk">MK</span> — Today Due</h5><h3 class="cyan" id="kpiMKToday">₹ —</h3></div>
+  <div class="kpi rk"><h5>🏭 <span class="lbl-rk">RK</span> — Today Due</h5><h3 class="violet" id="kpiRKToday">₹ —</h3></div>
+  <div class="kpi mk"><h5>🔴 <span class="lbl-mk">MK</span> — Overdue</h5><h3 class="cyan" id="kpiMKOverdue">₹ —</h3></div>
+  <div class="kpi rk"><h5>🔴 <span class="lbl-rk">RK</span> — Overdue</h5><h3 class="violet" id="kpiRKOverdue">₹ —</h3></div>
+  <div class="kpi mk"><h5>📅 <span class="lbl-mk">MK</span> — This Week</h5><h3 class="cyan" id="kpiMKWeek">₹ —</h3></div>
+  <div class="kpi rk"><h5>📅 <span class="lbl-rk">RK</span> — This Week</h5><h3 class="violet" id="kpiRKWeek">₹ —</h3></div>
+  <div class="kpi other"><h5>📋 Other Pay — Today</h5><h3 class="orange" id="kpiOtherToday">₹ —</h3></div>
+  <div class="kpi other"><h5>⚠️ Other Pay — Overdue</h5><h3 class="orange" id="kpiOtherOverdue">₹ —</h3></div>
+  <div class="kpi other" style="grid-column:1/-1"><h5>📅 Other Pay — This Week &nbsp;|&nbsp; Purchase — This Week</h5><h3 class="orange" id="kpiOtherWeek">₹ — | ₹ —</h3></div>
+  <div class="kpi bank" style="grid-column:1/-1"><h5>🏦 Bank Balance</h5><h3 class="purple" id="kpiBankBal">₹ —</h3><p class="kpi-updated" id="kpiBankUpdated"></p></div>
+
+  <div style="grid-column:1/-1"><div class="paid-section-label">✅ Payments Made by Me</div></div>
+  <div style="grid-column:1/-1">
+    <div class="paid-period-tabs">
+      <button class="paid-tab active" onclick="setPaidPeriod('all',this)">All Time</button>
+      <button class="paid-tab" onclick="setPaidPeriod('month',this)">This Month</button>
+      <button class="paid-tab" onclick="setPaidPeriod('week',this)">This Week</button>
+      <button class="paid-tab" onclick="setPaidPeriod('today',this)">Today</button>
+    </div>
+  </div>
+
+  <div class="kpi paid" style="grid-column:1/-1"><h5>✅ Total Paid — Purchase | Other</h5><h3 class="teal" id="kpiPaidTotal">₹ — | ₹ —</h3><p class="kpi-sub" id="kpiPaidCount"></p></div>
+  <div class="kpi mk"><h5>✅ <span class="lbl-mk">MK</span> — Paid</h5><h3 class="cyan" id="kpiPaidMK">₹ —</h3></div>
+  <div class="kpi rk"><h5>✅ <span class="lbl-rk">RK</span> — Paid</h5><h3 class="violet" id="kpiPaidRK">₹ —</h3></div>
+  <div class="kpi other" style="grid-column:1/-1"><h5>✅ Other Payments — Paid</h5><h3 class="orange" id="kpiPaidOther">₹ —</h3></div>
+</div>
+
+<div class="co-filter">
+  <button class="co-btn active" id="coAll" onclick="setCoFilter('all',this)">🏢 All</button>
+  <button class="co-btn" id="coMK" onclick="setCoFilter('mk',this)">🏭 MK</button>
+  <button class="co-btn" id="coRK" onclick="setCoFilter('rk',this)">🏭 RK</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today',this)">📅 Today</div>
+  <div class="tab" onclick="switchTab('week',this)">🗓 Week</div>
+  <div class="tab" onclick="switchTab('overdue',this)">🔴 Overdue</div>
+</div>
+
+<button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+<div id="content"><div class="empty">⏳ Loading...</div></div>
+<div id="toast"></div>
+
+<div id="partModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h4>💸 Part Payment</h4>
+    <p id="partModalCompany">—</p>
+    <div class="modal-pending" id="partModalPending"></div>
+    <input type="number" class="modal-input" id="partModalAmt" placeholder="Enter amount to pay" min="1" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closePartModal()">Cancel</button>
+      <button class="modal-confirm" id="partModalConfirm" onclick="submitPartPayment()">✅ Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var _data=null,_accountant=null,_currentTab='today',_coFilter='all',_paidPeriod='all';
+  var _MK_SHEET='Purchase-MK',_RK_SHEET='Purchase-RK',_MK_NAME='MK',_RK_NAME='RK';
+  var DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fmt(n){return '₹ '+Math.round(n||0).toLocaleString('en-IN');}
+  function pad(n){return String(n).padStart(2,'0');}
+  function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+  function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+
+  function movePaidRowUp(rowId){
+    var row=document.getElementById(rowId);
+    if(!row)return;
+    var allRows=Array.from(document.querySelectorAll('.tick-row'));
+    if(!allRows.length)return;
+    var firstPaidRow=allRows.find(function(r){return r.classList.contains('green-row');});
+    if(firstPaidRow&&firstPaidRow!==row) row.parentNode.insertBefore(row,firstPaidRow);
+    else row.parentNode.insertBefore(row,allRows[0]);
+  }
+
+  function dayTag(days,status){
+    if(status==='PAID'||days===null||days===undefined)return '';
+    if(days<0)return '<span class="day-tag overdue">'+Math.abs(days)+'d Overdue</span>';
+    if(days===0)return '<span class="day-tag duetoday">Due Today</span>';
+    return '<span class="day-tag ontime">'+days+'d Left</span>';
+  }
+
+  function parseDMY(str){
+    if(!str)return '';
+    str=String(str).trim();var m;
+    m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return m[3]+'-'+pad(m[2])+'-'+pad(m[1]);
+    m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);if(m)return (2000+parseInt(m[3],10))+'-'+pad(m[2])+'-'+pad(m[1]);
+    m=str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+    if(m){var months={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};var yr=parseInt(m[3],10);if(yr<100)yr+=2000;return yr+'-'+(months[m[2].toLowerCase()]||'00')+'-'+pad(m[1]);}
+    m=str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m)return m[3]+'-'+pad(m[2])+'-'+pad(m[1]);
+    return '';
+  }
+
+  function parseMDY(str){
+    if(!str)return '';
+    str=String(str).trim();var m;
+    m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return m[3]+'-'+pad(m[1])+'-'+pad(m[2]);
+    m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);if(m)return (2000+parseInt(m[3],10))+'-'+pad(m[1])+'-'+pad(m[2]);
+    return parseDMY(str);
+  }
+
+  function parseDateBySource(str,source){return source==='other'?parseMDY(str):parseDMY(str);}
+  function formatDateKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+  function todayKey(){return formatDateKey(new Date());}
+  function weekStartKey(){var d=new Date();d.setHours(0,0,0,0);var day=d.getDay();d.setDate(d.getDate()-day+(day===0?-6:1));return formatDateKey(d);}
+
+  function sumPaidByRange(fromKey,toKey){
+    if(!_accountant||!_accountant.allPayments)return{total:0,part:0,fullFinal:0,count:0};
+    var rows=_accountant.allPayments.filter(function(p){
+      var k=p.paidKey||'';if(!k||k==='unknown')return false;
+      if(fromKey&&k<fromKey)return false;if(toKey&&k>toKey)return false;
+      if(_coFilter==='mk')return p.source!=='purchase'||p.sheetName===_MK_SHEET;
+      if(_coFilter==='rk')return p.source!=='purchase'||p.sheetName===_RK_SHEET;
+      return true;
+    });
+    return{total:rows.reduce(function(a,b){return a+(b.amount||0);},0),count:rows.length};
+  }
+
+  function getTodayPaidSummary(){var tk=todayKey();return sumPaidByRange(tk,tk);}
+  function getWeekPaidSummary(){return sumPaidByRange(weekStartKey(),todayKey());}
+
+  function addPaymentEntryToLocalHistory(source,rowNum,sheetName,company,amount,entryType){
+    if(!_accountant)_accountant={allPayments:[]};
+    if(!_accountant.allPayments)_accountant.allPayments=[];
+    _accountant.allPayments.push({
+      source:source||'purchase',
+      rowNum:rowNum||0,
+      sheetName:sheetName||'',
+      company:company||'',
+      amount:amount||0,
+      entryType:entryType||'full',
+      paidKey:todayKey(),
+      paidDateStr:todayKey()
+    });
+  }
+
+  function removePaymentEntriesFromLocalHistory(rowNum,source,sheetName){
+    if(!_accountant||!_accountant.allPayments)return;
+    _accountant.allPayments=_accountant.allPayments.filter(function(p){
+      return !(Number(p.rowNum||0)===Number(rowNum||0)&&String(p.source||'')===String(source||'')&&String(p.sheetName||'')===String(sheetName||''));
+    });
+  }
+
+  function updateTodaySummaryLive(){
+    if(_currentTab!=='today')return;
+    var todayPay=applyCoFilter(_data.todayPay||[]);
+    var pendingAll=todayPay.filter(function(p){return p.status!=='PAID';});
+    var totalPayable=todayPay.reduce(function(a,b){return a+(b.amount||0);},0);
+    var totalPending=pendingAll.reduce(function(a,b){return a+(b.amount||0);},0);
+    var totalPaid=getTodayPaidSummary().total;
+    var cards=document.querySelectorAll('.day-summary');
+    if(cards[1])cards[1].innerHTML='<div class="day-sum-pill"><h6>📤 Total Payable</h6><p class="blue">'+fmt(totalPayable)+'</p></div><div class="day-sum-pill"><h6>✅ Paid Today</h6><p class="green">'+fmt(totalPaid)+'</p></div>';
+    if(cards[2])cards[2].innerHTML='<div class="day-sum-pill"><h6>⏳ Pending</h6><p style="color:var(--danger)">'+fmt(totalPending)+'</p></div>';
+  }
+
+  function updateWeekSummaryLive(){
+    if(_currentTab!=='week')return;
+    var weekPay=applyCoFilter(_data.weekPay||[]);
+    var weekDue=weekPay.reduce(function(a,b){return a+(b.amount||0);},0);
+    var weekPending=weekPay.filter(function(x){return x.status!=='PAID';}).reduce(function(a,b){return a+(b.amount||0);},0);
+    var totalWeekPaid=getWeekPaidSummary().total;
+    var cards=document.querySelectorAll('.day-summary');
+    if(cards[0])cards[0].innerHTML='<div class="day-sum-pill"><h6>📌 Week Due Payment</h6><p class="blue">'+fmt(weekDue)+'</p></div><div class="day-sum-pill"><h6>✅ Week Paid</h6><p class="green">'+fmt(totalWeekPaid)+'</p></div>';
+    if(cards[1])cards[1].innerHTML='<div class="day-sum-pill"><h6>⏳ Week Pending</h6><p style="color:var(--danger)">'+fmt(weekPending)+'</p></div>';
+  }
+
+  function refreshLiveSummaries(){updateTodaySummaryLive();updateWeekSummaryLive();}
+
+  function setPaidPeriod(period,btn){
+    _paidPeriod=period;
+    document.querySelectorAll('.paid-tab').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    updatePaidKPIs();
+  }
+
+  function updatePaidKPIs(){
+    if(!_data)return;var k=_data.kpi;var paidPurchase,paidOther,paidMK,paidRK,paidCount;
+    if(_paidPeriod==='today'){paidPurchase=(k.paidToday||0)-(k.paidTodayOther||0);paidOther=k.paidTodayOther||0;paidMK=k.paidTodayMK||0;paidRK=k.paidTodayRK||0;paidCount='Today';}
+    else if(_paidPeriod==='week'){paidPurchase=(k.paidThisWeek||0)-(k.paidWeekOther||0);paidOther=k.paidWeekOther||0;paidMK=k.paidWeekMK||0;paidRK=k.paidWeekRK||0;paidCount='This Week';}
+    else if(_paidPeriod==='month'){paidPurchase=(k.paidThisMonth||0)-(k.paidMonthOther||0);paidOther=k.paidMonthOther||0;paidMK=k.paidMonthMK||0;paidRK=k.paidMonthRK||0;paidCount='This Month';}
+    else{paidPurchase=k.totalPaidPurchase||0;paidOther=k.totalPaidOther||0;paidMK=k.totalPaidMK||0;paidRK=k.totalPaidRK||0;paidCount=(k.paidCountAll||0)+' invoices total';}
+    document.getElementById('kpiPaidTotal').innerHTML=fmt(paidPurchase)+'&nbsp;|&nbsp;'+fmt(paidOther);
+    document.getElementById('kpiPaidMK').innerText=fmt(paidMK);
+    document.getElementById('kpiPaidRK').innerText=fmt(paidRK);
+    document.getElementById('kpiPaidOther').innerText=fmt(paidOther);
+    document.getElementById('kpiPaidCount').innerText=paidCount;
+  }
+
+  function setCoFilter(co,btn){
+    _coFilter=co;
+    document.querySelectorAll('.co-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    render();
+  }
+
+  function applyCoFilter(arr){
+    if(_coFilter==='all')return arr;
+    if(_coFilter==='mk')return arr.filter(function(x){return x.source!=='purchase'||x.sheetName===_MK_SHEET;});
+    if(_coFilter==='rk')return arr.filter(function(x){return x.source!=='purchase'||x.sheetName===_RK_SHEET;});
+    return arr;
+  }
+
+  function firmPill(firm){if(!firm)return '';var cls=(firm===_RK_NAME)?'firm-rk':'firm-mk';return '<span class="firm-pill '+cls+'">'+firm+'</span>';}
+  function sourcePill(source){return source==='other'?'<span class="source-pill pill-other">Other</span>':'<span class="source-pill pill-purchase">Purchase</span>';}
+
+  function serverMarkPaid(source,rowNum,sheetName,onSuccess,onFail){
+    if(source==='other')google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).markOtherPaid(rowNum);
+    else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).markPayablePaid(rowNum,sheetName||_MK_SHEET);
+  }
+
+  function serverUndoPaid(source,rowNum,sheetName,onSuccess,onFail){
+    if(source==='other')google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).undoOtherPaid(rowNum);
+    else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).undoPayablePaid(rowNum,sheetName||_MK_SHEET);
+  }
+
+  function updateLocalStatus(rowNum,source,sheetName,status){
+    [_data.todayPay||[],_data.weekPay||[],_data.overduePay||[]].forEach(function(arr){
+      arr.forEach(function(x){
+        if(Number(x.rowNum)===Number(rowNum)&&String(x.source)===String(source)&&String(x.sheetName||'')===String(sheetName||'')){
+          x.status=status;
+          x.pending=status==='PAID'?0:Number(x.amount||0);
+        }
+      });
+    });
+  }
+
+  function findLocalRow(rowNum,source,sheetName){
+    var found=null;
+    (_data.todayPay||[]).concat(_data.weekPay||[]).concat(_data.overduePay||[]).forEach(function(x){
+      if(!found&&Number(x.rowNum)===Number(rowNum)&&String(x.source)===String(source)&&String(x.sheetName||'')===String(sheetName||''))found=x;
+    });
+    return found;
+  }
+
+  function tickRowHtml(p,idx,prefix){
+    prefix=prefix||'tr';var rowId=prefix+'-'+idx;var isPaid=p.status==='PAID';var hlClass=isPaid?'green-row':(p.highlight||'');var sName=esc(p.sheetName||_MK_SHEET);
+    var hasPartPay=(!isPaid&&p.gross&&p.gross>p.amount);
+    var amtDisplay=hasPartPay?fmt(p.amount)+'<br><span style="font-size:10px;color:var(--muted);font-weight:600;text-decoration:line-through;">'+fmt(p.gross)+'</span>':fmt(p.amount);
+    var undoBtn=isPaid?'<button class="tick-undo" title="Undo" onclick="tickUndo(this,'+p.rowNum+',\''+esc(p.source)+'\',\''+sName+'\',\''+esc(p.company)+'\',\''+rowId+'\')">↩️</button>':'';
+    var partBtn=(!isPaid&&p.amount>0)?'<button class="tick-part" onclick="openPartModal('+p.rowNum+',\''+esc(p.source)+'\',\''+sName+'\',\''+esc(p.company)+'\','+p.amount+',\''+rowId+'\')">💰</button>':'';
+    return '<div class="tick-row '+hlClass+'" id="'+rowId+'">'
+      +'<input type="checkbox" class="tick-cb" id="cb-'+rowId+'" '+(isPaid?'checked':'')+' onchange="tickChanged(this,'+p.rowNum+',\''+esc(p.source)+'\',\''+sName+'\',\''+esc(p.company)+'\',\''+rowId+'\')">'
+      +'<div class="tick-info"><div class="tick-name">'+p.company+firmPill(p.firm)+sourcePill(p.source)+'</div>'
+      +'<div class="tick-meta">'+(p.supplierInvDate&&p.source==='purchase'?'<span>🧾 Inv: '+p.supplierInvDate+'</span>':(p.date?'<span>🧾 Inv: '+p.date+'</span>':''))
+      +(p.dueDateStr?'<span>📅 Due: '+p.dueDateStr+'</span>':'')+dayTag(p.daysDiff,p.status)+'</div></div>'
+      +'<span class="tick-amt'+(isPaid?' paid':'')+'" id="pamt-'+rowId+'" style="text-align:right;">'+amtDisplay+'</span>'+partBtn+undoBtn+'</div>';
+  }
+
+  function tickChanged(cb,rowNum,source,sheetName,company,rowId){
+    if(!cb.checked)return;cb.disabled=true;
+    serverMarkPaid(source,rowNum,sheetName,function(res){
+      if(res.success){
+        showToast('✅ '+company+' marked PAID');
+        var row=document.getElementById(rowId);
+        if(row){
+          row.classList.remove('red-row','orange-row');row.classList.add('green-row');
+          var amt=row.querySelector('.tick-amt');if(amt)amt.classList.add('paid');
+          if(!row.querySelector('.tick-undo')){
+            var u=document.createElement('button');u.className='tick-undo';u.title='Undo';u.textContent='↩️';
+            u.onclick=function(){tickUndo(u,rowNum,source,sheetName,company,rowId);};
+            row.appendChild(u);
+          }
+          var pb=row.querySelector('.tick-part');if(pb)pb.remove();
+        }
+        updateLocalStatus(rowNum,source,sheetName,'PAID');
+        var rowData=findLocalRow(rowNum,source,sheetName);
+        addPaymentEntryToLocalHistory(source,rowNum,sheetName,company,rowData?Number(rowData.amount||0):0,'full');
+        refreshLiveSummaries();
+        movePaidRowUp(rowId);
+      }else{showToast('❌ '+res.error);cb.checked=false;cb.disabled=false;}
+    },function(err){showToast('❌ '+err.message);cb.checked=false;cb.disabled=false;});
+  }
+
+  function tickUndo(btn,rowNum,source,sheetName,company,rowId){
+    if(!confirm('Undo payment for "'+company+'"?'))return;
+    btn.textContent='⏳';btn.disabled=true;
+    serverUndoPaid(source,rowNum,sheetName,function(res){
+      if(res.success){
+        showToast('↩️ '+company+' undone');
+        var row=document.getElementById(rowId);
+        if(row){
+          row.classList.remove('green-row');row.classList.add('red-row');
+          var amt=row.querySelector('.tick-amt');if(amt)amt.classList.remove('paid');
+          var cb=row.querySelector('.tick-cb');if(cb){cb.checked=false;cb.disabled=false;}
+          btn.remove();
+
+          if(!row.querySelector('.tick-part')){
+            var partBtn=document.createElement('button');
+            partBtn.className='tick-part';
+            partBtn.textContent='💰';
+            partBtn.onclick=function(){
+              var rowData=findLocalRow(rowNum,source,sheetName);
+              var amtVal=rowData?Number(rowData.amount||0):0;
+              openPartModal(rowNum,source,sheetName,company,amtVal,rowId);
+            };
+            var amtEl=row.querySelector('.tick-amt');
+            if(amtEl&&amtEl.nextSibling)row.insertBefore(partBtn,amtEl.nextSibling);
+            else row.appendChild(partBtn);
+          }
+        }
+        updateLocalStatus(rowNum,source,sheetName,'PENDING');
+        removePaymentEntriesFromLocalHistory(rowNum,source,sheetName);
+        refreshLiveSummaries();
+      }else{showToast('❌ '+res.error);btn.textContent='↩️';btn.disabled=false;}
+    },function(err){showToast('❌ '+err.message);btn.textContent='↩️';btn.disabled=false;});
+  }
+
+  function payAllToday(btn,items,rowIds){
+    if(!items.length)return;
+    if(!confirm('Mark ALL '+items.length+' pending payable(s) as PAID?'))return;
+    btn.disabled=true;btn.textContent='⏳ Saving…';
+
+    google.script.run.withSuccessHandler(function(res){
+      if(res.success){
+        showToast('✅ All payables marked PAID');
+
+        items.forEach(function(it){
+          updateLocalStatus(it.rowNum,it.source,it.sheetName,'PAID');
+          var rowData=findLocalRow(it.rowNum,it.source,it.sheetName);
+          addPaymentEntryToLocalHistory(it.source,it.rowNum,it.sheetName,'',rowData?Number(rowData.amount||0):0,'full');
+        });
+
+        rowIds.forEach(function(id){
+          var row=document.getElementById(id);
+          if(row){
+            row.classList.remove('red-row','orange-row');
+            row.classList.add('green-row');
+            var cb=row.querySelector('.tick-cb');
+            if(cb){cb.checked=true;cb.disabled=true;}
+            var amt=row.querySelector('.tick-amt');
+            if(amt)amt.classList.add('paid');
+            var pb=row.querySelector('.tick-part');
+            if(pb)pb.remove();
+            movePaidRowUp(id);
+          }
+        });
+
+        btn.closest('.pay-all-bar').style.display='none';
+        refreshLiveSummaries();
+      }else{
+        showToast('❌ '+(res.error||'Error'));
+        btn.disabled=false;btn.textContent='💳 Pay All Today';
+      }
+    }).withFailureHandler(function(err){
+      showToast('❌ '+err.message);
+      btn.disabled=false;btn.textContent='💳 Pay All Today';
+    }).markPayablesPaidBulk(items);
+  }
+
+  function bindTodayPayAll(){
+    var btn=document.getElementById('payAllTodayBtn');
+    var meta=document.getElementById('payAllTodayMeta');
+    if(!btn||!meta)return;
+    var items=JSON.parse(meta.getAttribute('data-items'));
+    var ids=JSON.parse(meta.getAttribute('data-ids'));
+    btn.addEventListener('click',function(){payAllToday(btn,items,ids);});
+  }
+
+  function recvCardHtml(r){
+    var isPaid=r.status==='PAID';
+    var contactBtns=r.phone?'<a href="tel:'+r.phone+'" class="btn btn-call">📞 Call</a><a href="https://wa.me/'+r.phone+'" class="btn btn-wa">💬 WA</a>':'';
+    var actions=contactBtns?'<div class="actions">'+contactBtns+'</div>':'';
+    return '<div class="row-card '+r.highlight+'"><div class="row-header"><span class="row-company">'+r.company+'</span><span class="status-badge '+(isPaid?'bg-paid':'bg-pending')+'">'+r.status+'</span></div>'
+      +'<div class="data-line"><span class="lbl">Due: '+r.dueDateStr+'</span>'+dayTag(r.daysDiff,r.status)+'</div><hr class="divider">'
+      +'<div class="data-line"><span class="lbl">Invoice No</span><span class="val">'+(r.invoiceNo||'—')+'</span></div>'
+      +'<div class="data-line"><span class="lbl">Invoice Date</span><span class="val">'+(r.date||'—')+'</span></div>'
+      +'<div class="data-line"><span class="lbl">Total Bill</span><span class="val">'+fmt(r.amount)+'</span></div>'
+      +'<div class="data-line"><span class="lbl">Received</span><span class="val green">'+fmt(r.received)+'</span></div>'
+      +'<div class="data-line"><span class="lbl">Outstanding</span><span class="val danger">'+fmt(r.pending)+'</span></div>'+actions+'</div>';
+  }
+
+  function buildTodayHtml(todayRec,todayPay,overduePay){
+    var html='';
+    html+='<div class="section-header"><span class="section-title">📥 Receivables — Today</span><span class="count-badge">'+todayRec.length+'</span></div>';
+    if(todayRec.length){
+      var totalRecv=todayRec.reduce(function(a,b){return a+(b.pending||0);},0);
+      html+='<div class="day-summary"><div class="day-sum-pill"><h6>📥 Total Outstanding</h6><p class="green">'+fmt(totalRecv)+'</p></div></div>';
+      todayRec.forEach(function(r){html+=recvCardHtml(r);});
+    }else html+='<div class="empty">Nothing here 🎉</div>';
+
+    var pendingAll=todayPay.filter(function(p){return p.status!=='PAID';});
+    html+='<div class="section-header" style="margin-top:18px"><span class="section-title">📤 Payables — Today</span><span class="count-badge">'+todayPay.length+'</span></div>';
+
+    if(todayPay.length){
+      var totalPayable=todayPay.reduce(function(a,b){return a+(b.amount||0);},0);
+      var totalPending=pendingAll.reduce(function(a,b){return a+(b.amount||0);},0);
+      var totalPaid=getTodayPaidSummary().total;
+
+      html+='<div class="day-summary"><div class="day-sum-pill"><h6>📤 Total Payable</h6><p class="blue">'+fmt(totalPayable)+'</p></div><div class="day-sum-pill"><h6>✅ Paid Today</h6><p class="green">'+fmt(totalPaid)+'</p></div></div>';
+      html+='<div class="day-summary"><div class="day-sum-pill"><h6>⏳ Pending</h6><p style="color:var(--danger)">'+fmt(totalPending)+'</p></div></div>';
+
+      if(pendingAll.length){
+        var payAllItems=pendingAll.map(function(p){return{rowNum:p.rowNum,source:p.source,sheetName:p.sheetName||_MK_SHEET};});
+        var pendingRowIds=[];
+        todayPay.forEach(function(p,i){if(p.status!=='PAID')pendingRowIds.push('tp-'+i);});
+
+        html+='<div class="pay-all-bar" id="payAllBar">'
+          +'<span>💳 '+pendingAll.length+' pending — '+fmt(totalPending)+'</span>'
+          +'<button class="btn-pay-all-today" id="payAllTodayBtn">💳 Pay All Today</button>'
+          +'</div>'
+          +'<span style="display:none" id="payAllTodayMeta" '
+          +'data-items=\''+JSON.stringify(payAllItems).replace(/'/g,'&#39;')+'\' '
+          +'data-ids=\''+JSON.stringify(pendingRowIds).replace(/'/g,'&#39;')+'\'></span>';
+      }
+
+      todayPay.forEach(function(p,i){html+=tickRowHtml(p,i,'tp');});
+    }else{
+      html+='<div class="day-summary"><div class="day-sum-pill"><h6>📤 Total Payable</h6><p class="blue">'+fmt(0)+'</p></div><div class="day-sum-pill"><h6>✅ Paid Today</h6><p class="green">'+fmt(getTodayPaidSummary().total)+'</p></div></div>';
+      html+='<div class="day-summary"><div class="day-sum-pill"><h6>⏳ Pending</h6><p style="color:var(--danger)">'+fmt(0)+'</p></div></div><div class="empty">Nothing here 🎉</div>';
+    }
+
+    if(overduePay&&overduePay.length){
+      var total=overduePay.reduce(function(a,b){return a+(b.amount||0);},0);
+      html+='<div class="pending-section"><div class="section-header" style="margin-top:18px"><span class="section-title">⚠️ Overdue Pending Payments</span><span class="count-badge">'+overduePay.length+'</span></div>';
+      html+='<div class="pending-total-bar"><span>Total overdue payable</span><strong>'+fmt(total)+'</strong></div>';
+      overduePay.slice().sort(function(a,b){return(a.daysDiff||0)-(b.daysDiff||0);}).forEach(function(p,i){html+=tickRowHtml(p,i,'op');});
+      html+='</div>';
+    }
+
+    return html;
+  }
+
+  function buildWeekTable(weekRec,weekPay){
+    var today=new Date();today.setHours(0,0,0,0);
+    var monday=new Date(today);var day=monday.getDay();monday.setDate(monday.getDate()-day+(day===0?-6:1));
+    var html='',weekPaid=getWeekPaidSummary(),weekDue=weekPay.reduce(function(a,b){return a+(b.amount||0);},0),weekPending=weekPay.filter(function(x){return x.status!=='PAID';}).reduce(function(a,b){return a+(b.amount||0);},0);
+
+    html+='<div class="section-header"><span class="section-title">📅 This Week Summary</span></div>';
+    html+='<div class="day-summary"><div class="day-sum-pill"><h6>📌 Week Due Payment</h6><p class="blue">'+fmt(weekDue)+'</p></div><div class="day-sum-pill"><h6>✅ Week Paid</h6><p class="green">'+fmt(weekPaid.total)+'</p></div></div>';
+    html+='<div class="day-summary"><div class="day-sum-pill"><h6>⏳ Week Pending</h6><p style="color:var(--danger)">'+fmt(weekPending)+'</p></div></div>';
+
+    for(var i=0;i<7;i++){
+      var d=new Date(monday);d.setDate(monday.getDate()+i);var dStr=formatDateKey(d),isToday=(d.getTime()===today.getTime()),dayName=DAY_NAMES[d.getDay()],dateDisp=d.getDate()+' '+MONTH_NAMES[d.getMonth()];
+      var recs=weekRec.filter(function(x){return parseDMY(x.dueDateStr)===dStr;});
+      var pays=weekPay.filter(function(x){return parseDateBySource(x.dueDateStr,x.source)===dStr;});
+      if(!recs.length&&!pays.length)continue;
+
+      html+='<div class="day-block"><div class="day-label '+(isToday?'today-label':'normal-label')+'"><span>'+(isToday?'📍 ':'')+dayName+' · '+dateDisp+'</span></div>';
+      html+='<div class="day-summary">';
+      var totalRecv=recs.reduce(function(a,b){return a+(b.pending||0);},0),totalPay=pays.reduce(function(a,b){return a+(b.amount||0);},0);
+      if(totalRecv>0)html+='<div class="day-sum-pill"><h6>📥 Receivable</h6><p class="green">'+fmt(totalRecv)+'</p></div>';
+      if(totalPay>0)html+='<div class="day-sum-pill"><h6>📌 Due Payment</h6><p class="blue">'+fmt(totalPay)+'</p></div>';
+      html+='</div><table class="mini-table"><thead><tr><th>Company</th><th style="text-align:right">Amount</th><th style="text-align:center">Type</th><th style="text-align:center">Act</th></tr></thead><tbody>';
+
+      recs.forEach(function(r){
+        html+='<tr><td class="company-cell"><span class="type-dot dot-recv"></span>'+r.company+'</td><td class="amt-cell recv">'+fmt(r.pending)+'</td><td style="text-align:center;font-size:10px;font-weight:700;color:var(--success)">RECV</td><td></td></tr>';
+      });
+
+      pays.forEach(function(p,j){
+        var rowId='wr-'+dStr+'-'+j,isPaid=p.status==='PAID',sName=esc(p.sheetName||_MK_SHEET);
+        var act='<input type="checkbox" class="tick-cb" '+(isPaid?'checked disabled':'')+' onchange="tickChanged(this,'+p.rowNum+',\''+esc(p.source)+'\',\''+sName+'\',\''+esc(p.company)+'\',\''+rowId+'\')">';
+        if(!isPaid)act+='<button class="tick-part" style="margin-left:4px;font-size:11px;padding:3px 6px;" onclick="openPartModal('+p.rowNum+',\''+esc(p.source)+'\',\''+sName+'\',\''+esc(p.company)+'\','+p.amount+',\''+rowId+'\')">💰</button>';
+        html+='<tr id="'+rowId+'"><td class="company-cell">'+p.company+firmPill(p.firm)+sourcePill(p.source)+'</td><td class="amt-cell pay" id="pamt-'+rowId+'">'+fmt(p.amount)+'</td><td style="text-align:center">'+(p.source==='other'?'OTHER':p.firm)+'</td><td style="text-align:center">'+act+'</td></tr>';
+      });
+
+      html+='</tbody></table></div>';
+    }
+    return html||'<div class="empty">No entries this week 🎉</div>';
+  }
+
+  function render(){
+    if(!_data)return;var html='';
+    var d={todayRec:_data.todayRec,weekRec:_data.weekRec,todayPay:applyCoFilter(_data.todayPay),weekPay:applyCoFilter(_data.weekPay),overdueRec:_data.overdueRec,overduePay:applyCoFilter(_data.overduePay)};
+
+    if(_currentTab==='today')html+=buildTodayHtml(d.todayRec,d.todayPay,d.overduePay);
+    else if(_currentTab==='week')html+=buildWeekTable(d.weekRec,d.weekPay);
+    else if(_currentTab==='overdue'){
+      var sortedRec=(d.overdueRec||[]).slice().sort(function(a,b){return(a.daysDiff||0)-(b.daysDiff||0);});
+      var sortedPay=(d.overduePay||[]).slice().sort(function(a,b){return(a.daysDiff||0)-(b.daysDiff||0);});
+
+      html+='<div class="section-header"><span class="section-title">🔴 Overdue Receivables</span><span class="count-badge">'+sortedRec.length+'</span></div>';
+      if(sortedRec.length)sortedRec.forEach(function(r){html+=recvCardHtml(r);});
+      else html+='<div class="empty">No overdue receivables 🎉</div>';
+
+      html+='<div class="section-header" style="margin-top:18px"><span class="section-title">🔴 Overdue Payables</span><span class="count-badge">'+sortedPay.length+'</span></div>';
+      if(sortedPay.length){
+        var totalOD=sortedPay.reduce(function(a,b){return a+(b.amount||0);},0);
+        html+='<div class="pending-total-bar"><span>Total overdue payable</span><strong>'+fmt(totalOD)+'</strong></div>';
+        sortedPay.forEach(function(p,i){html+=tickRowHtml(p,i,'odp');});
+      }else html+='<div class="empty">No overdue payables 🎉</div>';
+    }
+
+    document.getElementById('content').innerHTML=html;
+    if(_currentTab==='today')bindTodayPayAll();
+  }
+
+  var _partRowNum=0,_partSource='',_partSheetName=_MK_SHEET,_partAmount=0,_partRowId='';
+
+  function openPartModal(rowNum,source,sheetName,company,amount,rowId){
+    _partRowNum=rowNum;_partSource=source;_partSheetName=sheetName;_partAmount=amount;_partRowId=rowId;
+    document.getElementById('partModalCompany').textContent=company+' ('+(source==='other'?'Other':sheetName)+')';
+    document.getElementById('partModalPending').textContent='Total Due: '+fmt(amount);
+    document.getElementById('partModalAmt').value='';
+    document.getElementById('partModalConfirm').disabled=false;
+    document.getElementById('partModalConfirm').textContent='✅ Confirm';
+    document.getElementById('partModal').style.display='flex';
+  }
+
+  function closePartModal(){document.getElementById('partModal').style.display='none';}
+
+  function submitPartPayment(){
+    var amt=parseFloat(document.getElementById('partModalAmt').value);
+    if(!amt||amt<=0){showToast('❌ Enter a valid amount');return;}
+    if(amt>=_partAmount){showToast('❌ Use checkbox for full payment');return;}
+
+    var btn=document.getElementById('partModalConfirm');btn.disabled=true;btn.textContent='⏳ Saving…';
+    google.script.run.withSuccessHandler(function(res){
+      if(res.success){
+        closePartModal();showToast('💸 '+fmt(amt)+' payment recorded');
+        var amtEl=document.getElementById('pamt-'+_partRowId);
+        if(amtEl)amtEl.innerHTML=fmt(res.newAmount)+'<br><span style="font-size:10px;color:var(--muted);font-weight:600;text-decoration:line-through;">'+fmt(res.originalAmount||_partAmount)+'</span>';
+
+        [_data.todayPay||[],_data.weekPay||[],_data.overduePay||[]].forEach(function(arr){
+          arr.forEach(function(x){
+            if(Number(x.rowNum)===Number(_partRowNum)&&String(x.source)===String(_partSource)&&String(x.sheetName||'')===String(_partSheetName||'')){
+              x.gross=Number(res.originalAmount||x.gross||_partAmount);
+              x.amount=Number(res.newAmount||x.amount);
+              x.pending=Number(res.newAmount||x.pending);
+            }
+          });
+        });
+
+        addPaymentEntryToLocalHistory(_partSource,_partRowNum,_partSheetName,'',amt,'part');
+        refreshLiveSummaries();
+      }else{
+        showToast('❌ '+res.error);btn.disabled=false;btn.textContent='✅ Confirm';
+      }
+    }).withFailureHandler(function(err){
+      showToast('❌ '+err.message);btn.disabled=false;btn.textContent='✅ Confirm';
+    }).recordPartPaymentPayable(_partRowNum,_partSource,amt,_partSheetName);
+  }
+
+  document.getElementById('partModal').addEventListener('click',function(e){if(e.target===this)closePartModal();});
+
+  function switchTab(tab,el){
+    _currentTab=tab;
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+    el.classList.add('active');
+    render();
+  }
+
+  function loadDashboard(){
+    document.getElementById('content').innerHTML='<div class="empty">⏳ Loading...</div>';
+    var doneMain=false,doneAcc=false;
+
+    function tryRender(){
+      if(!doneMain||!doneAcc)return;
+      _MK_NAME=_data.companyMK||'MK';_RK_NAME=_data.companyRK||'RK';
+
+      document.querySelectorAll('.lbl-mk').forEach(function(el){el.textContent=_MK_NAME;});
+      document.querySelectorAll('.lbl-rk').forEach(function(el){el.textContent=_RK_NAME;});
+      document.getElementById('coMK').textContent='🏭 '+_MK_NAME;
+      document.getElementById('coRK').textContent='🏭 '+_RK_NAME;
+
+      var k=_data.kpi;
+      document.getElementById('kpiTodayRecv').innerText=fmt(k.todayExpectedReceiving);
+      document.getElementById('kpiTodayPay').innerText=fmt(k.todayPaymentDue);
+      document.getElementById('kpiOverAll').innerHTML=fmt(k.overdueReceivable)+'&nbsp;|&nbsp;'+fmt(k.overduePayable);
+      document.getElementById('kpiWeek').innerHTML=fmt(k.weekReceivable)+'&nbsp;|&nbsp;'+fmt(k.weekPayable);
+      document.getElementById('kpiMKToday').innerText=fmt(k.mkTodayDue);
+      document.getElementById('kpiRKToday').innerText=fmt(k.rkTodayDue);
+      document.getElementById('kpiMKOverdue').innerText=fmt(k.mkOverdue);
+      document.getElementById('kpiRKOverdue').innerText=fmt(k.rkOverdue);
+      document.getElementById('kpiMKWeek').innerText=fmt(k.mkWeekPayable);
+      document.getElementById('kpiRKWeek').innerText=fmt(k.rkWeekPayable);
+      document.getElementById('kpiOtherToday').innerText=fmt(k.otherTodayDue);
+      document.getElementById('kpiOtherOverdue').innerText=fmt(k.otherOverdue);
+      document.getElementById('kpiOtherWeek').innerHTML=fmt(k.otherWeekPayable)+'&nbsp;|&nbsp;'+fmt(k.purchaseWeekPayable);
+      document.getElementById('kpiBankBal').innerText=fmt(_data.bankBalance||0);
+      document.getElementById('kpiBankUpdated').innerText=_data.bankLastUpdated?'🕐 Updated: '+_data.bankLastUpdated:'';
+
+      updatePaidKPIs();
+      render();
+    }  
+
+    google.script.run.withSuccessHandler(function(data){
+      _data=data;doneMain=true;tryRender();
+    }).withFailureHandler(function(err){
+      document.getElementById('content').innerHTML='<div class="error-box">❌ '+err.message+'</div>';
+    }).getDashboardData();
+
+    google.script.run.withSuccessHandler(function(data){
+      _accountant=data||{allPayments:[]};doneAcc=true;tryRender();
+    }).withFailureHandler(function(){
+      _accountant={allPayments:[]};doneAcc=true;tryRender();
+    }).getAccountantData();
+  }
+
+  window.onload=loadDashboard;
+</script>
+</body>
+</html>
